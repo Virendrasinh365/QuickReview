@@ -44,7 +44,7 @@ const AdminLogin = () => {
     };
 
     const handleFillDemo = () => {
-        setEmail("admin@eazyreview.com");
+        setEmail("admin@quickreview.com");
         setPassword("admin123");
     };
 
@@ -56,7 +56,7 @@ const AdminLogin = () => {
                     <div className="login-brand-icon">
                         <Sparkles size={28} className="brand-sparkle" />
                     </div>
-                    <h1>EazyReview Admin</h1>
+                    <h1>QuickReview Admin</h1>
                     <p>Sign in to manage businesses, review campaigns & AI analytics</p>
                 </div>
 
@@ -67,7 +67,7 @@ const AdminLogin = () => {
                     </div>
                     <div className="demo-text">
                         <span>Click to autofill default credentials:</span>
-                        <code>admin@eazyreview.com</code> / <code>admin123</code>
+                        <code>admin@quickreview.com</code> / <code>admin123</code>
                     </div>
                 </div>
 

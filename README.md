@@ -1,4 +1,4 @@
-# 🌟 EazyReview — AI-Powered Google Review SaaS Platform
+# 🌟 QuickReview — AI-Powered Google Review SaaS Platform
 
 > **Effortlessly collect authentic 5-star Google reviews for local businesses using AI, in-store QR counter kits, and real-time conversion tracking.**
 
@@ -6,9 +6,9 @@
 
 ## 🚀 Overview
 
-**EazyReview** is a full-stack SaaS platform designed to solve the biggest problem local businesses face: **getting customers to leave detailed, genuine Google reviews before they walk out the door.**
+**QuickReview** is a full-stack SaaS platform designed to solve the biggest problem local businesses face: **getting customers to leave detailed, genuine Google reviews before they walk out the door.**
 
-Instead of staring at a blank text box, customers scan an in-store tabletop QR code, select their star rating, language, and services availed, and EazyReview's AI engine instantly crafts a genuine, human-like 25-word review. With one tap of **"Copy & Post to Google"**, the review is saved to clipboard and the customer is routed directly to the business's Google Place review modal.
+Instead of staring at a blank text box, customers scan an in-store tabletop QR code, select their star rating, language, and services availed, and QuickReview's AI engine instantly crafts a genuine, human-like 25-word review. With one tap of **"Copy & Post to Google"**, the review is saved to clipboard and the customer is routed directly to the business's Google Place review modal.
 
 ---
 
@@ -125,8 +125,8 @@ npm run dev
 npm start
 ```
 
-> **Note**: On initial server start, EazyReview automatically seeds a default admin account if none exists:
-> - **Email**: `admin@eazyreview.com`
+> **Note**: On initial server start, QuickReview automatically seeds a default admin account if none exists:
+> - **Email**: `admin@quickreview.com`
 > - **Password**: `admin123`
 
 ---
@@ -164,7 +164,7 @@ Open your browser at `http://localhost:5173`.
 | `/review/:slug` | Customer | Public review generation page (e.g. `/review/test-mobile-store`) |
 
 **Default Admin Credentials:**
-- **Email**: `admin@eazyreview.com`
+- **Email**: `admin@quickreview.com`
 - **Password**: `admin123`
 
 ---

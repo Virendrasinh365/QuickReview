@@ -91,7 +91,7 @@ const PrintableStandee = ({ business, qrDataUrl, reviewUrl, onClose }) => {
                         {/* Standee Footer */}
                         <div className="standee-footer">
                             <span className="standee-url-text">{reviewUrl}</span>
-                            <span className="standee-credit">Powered by <strong>EazyReview</strong></span>
+                            <span className="standee-credit">Powered by <strong>QuickReview</strong></span>
                         </div>
                     </div>
                 </div>

@@ -13,11 +13,17 @@ const seedDefaultAdmin = async () => {
         if (count === 0) {
             await User.create({
                 name: "Admin User",
-                email: "admin@eazyreview.com",
+                email: "admin@quickreview.com",
                 password: "admin123",
                 role: "admin"
             });
-            console.log("Default admin created: admin@eazyreview.com / admin123");
+            console.log("Default admin created: admin@quickreview.com / admin123");
+        } else {
+            // Automatically migrate prior default admin email if exists
+            await User.updateOne(
+                { email: "admin@eazyreview.com" },
+                { email: "admin@quickreview.com" }
+            );
         }
     } catch (err) {
         console.error("Error seeding default admin:", err.message);
@@ -36,7 +42,17 @@ const login = async (req, res) => {
             });
         }
 
-        const user = await User.findOne({ email: email.toLowerCase().trim() });
+        const normalizedEmail = email.toLowerCase().trim();
+        let user = await User.findOne({ email: normalizedEmail });
+        
+        // Backward compatibility: allow login with admin@quickreview.com if DB still has admin@eazyreview.com
+        if (!user && normalizedEmail === "admin@quickreview.com") {
+            user = await User.findOne({ email: "admin@eazyreview.com" });
+            if (user) {
+                user.email = "admin@quickreview.com";
+                await user.save();
+            }
+        }
         if (!user || !(await user.comparePassword(password))) {
             return res.status(401).json({
                 success: false,

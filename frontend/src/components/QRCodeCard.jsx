@@ -37,7 +37,7 @@ const QRCodeCard = ({ business }) => {
     const handleDownloadQR = () => {
         if (!qrDataUrl) return;
         const link = document.createElement("a");
-        link.download = `${business.slug}-eazyreview-qr.png`;
+        link.download = `${business.slug}-quickreview-qr.png`;
         link.href = qrDataUrl;
         link.click();
         success("QR Code downloaded as PNG!");

@@ -8,7 +8,7 @@ const adminClient = axios.create({
 
 // Interceptor to attach JWT token
 adminClient.interceptors.request.use((config) => {
-    const token = localStorage.getItem("eazyreview_token");
+    const token = localStorage.getItem("quickreview_token") || localStorage.getItem("eazyreview_token");
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
@@ -25,6 +25,8 @@ adminClient.interceptors.response.use(
             // Token expired or invalid
             const currentPath = window.location.pathname;
             if (currentPath.startsWith("/admin") && currentPath !== "/admin/login") {
+                localStorage.removeItem("quickreview_token");
+                localStorage.removeItem("quickreview_user");
                 localStorage.removeItem("eazyreview_token");
                 localStorage.removeItem("eazyreview_user");
                 window.location.href = "/admin/login";

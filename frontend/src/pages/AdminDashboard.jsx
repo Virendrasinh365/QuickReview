@@ -152,7 +152,7 @@ const AdminDashboard = () => {
                         <Sparkles size={20} className="brand-sparkle" />
                     </div>
                     <div>
-                        <h2>EazyReview Admin</h2>
+                        <h2>QuickReview Admin</h2>
                         <span className="topbar-sub">Store & Review Campaign Manager</span>
                     </div>
                 </div>

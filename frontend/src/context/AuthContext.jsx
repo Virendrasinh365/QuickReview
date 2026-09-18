@@ -4,7 +4,7 @@ const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(() => {
-        const saved = localStorage.getItem("eazyreview_user");
+        const saved = localStorage.getItem("quickreview_user") || localStorage.getItem("eazyreview_user");
         try {
             return saved ? JSON.parse(saved) : null;
         } catch {
@@ -13,7 +13,7 @@ export const AuthProvider = ({ children }) => {
     });
 
     const [token, setToken] = useState(() => {
-        return localStorage.getItem("eazyreview_token") || null;
+        return localStorage.getItem("quickreview_token") || localStorage.getItem("eazyreview_token") || null;
     });
 
     const [loading, setLoading] = useState(false);
@@ -21,13 +21,15 @@ export const AuthProvider = ({ children }) => {
     const login = (newToken, newUser) => {
         setToken(newToken);
         setUser(newUser);
-        localStorage.setItem("eazyreview_token", newToken);
-        localStorage.setItem("eazyreview_user", JSON.stringify(newUser));
+        localStorage.setItem("quickreview_token", newToken);
+        localStorage.setItem("quickreview_user", JSON.stringify(newUser));
     };
 
     const logout = () => {
         setToken(null);
         setUser(null);
+        localStorage.removeItem("quickreview_token");
+        localStorage.removeItem("quickreview_user");
         localStorage.removeItem("eazyreview_token");
         localStorage.removeItem("eazyreview_user");
     };

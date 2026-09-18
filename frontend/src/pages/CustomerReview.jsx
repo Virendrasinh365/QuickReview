@@ -175,7 +175,7 @@ const CustomerReview = () => {
                 )}
 
                 <div className="powered-by">
-                    Powered by <span style={{ fontWeight: "700", color: "var(--primary)" }}>EazyReview</span>
+                    Powered by <span style={{ fontWeight: "700", color: "var(--primary)" }}>QuickReview</span>
                 </div>
             </div>
         </div>
