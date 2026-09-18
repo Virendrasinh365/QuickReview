@@ -125,9 +125,6 @@ npm run dev
 npm start
 ```
 
-> **Note**: On initial server start, QuickReview automatically seeds a default admin account if none exists:
-> - **Email**: `admin@quickreview.com`
-> - **Password**: `admin123`
 
 ---
 
