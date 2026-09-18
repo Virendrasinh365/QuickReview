@@ -102,6 +102,7 @@ const generateReview = async (req, res) => {
             success: true,
             message: "Review generated successfully",
             data: {
+                reviewId: review._id,
                 review: generatedReviewText
             }
         });
@@ -116,6 +117,106 @@ const generateReview = async (req, res) => {
     }
 };
 
-module.exports = {
-    generateReview
+// Analytics for single business
+const getBusinessAnalytics = async (req, res) => {
+    try {
+        const { businessId } = req.params;
+        const reviews = await Review.find({ businessId })
+            .populate("serviceIds", "name")
+            .sort({ createdAt: -1 });
+            
+        const totalReviews = reviews.length;
+        
+        let totalRating = 0;
+        let copiedCount = 0;
+        const ratingCounts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+        const languageCounts = {};
+
+        reviews.forEach(r => {
+            totalRating += r.rating || 0;
+            if (r.copiedToGoogle) copiedCount++;
+            if (ratingCounts[r.rating] !== undefined) {
+                ratingCounts[r.rating]++;
+            }
+            if (r.language) {
+                languageCounts[r.language] = (languageCounts[r.language] || 0) + 1;
+            }
+        });
+
+        const averageRating = totalReviews > 0 ? (totalRating / totalReviews).toFixed(1) : "0.0";
+        const conversionRate = totalReviews > 0 ? Math.round((copiedCount / totalReviews) * 100) : 0;
+
+        res.status(200).json({
+            success: true,
+            data: {
+                totalReviews,
+                averageRating: Number(averageRating),
+                copiedCount,
+                conversionRate,
+                ratingCounts,
+                languageCounts,
+                recentReviews: reviews.slice(0, 10)
+            }
+        });
+    } catch (error) {
+        console.error("Get Business Analytics Error:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
 };
+
+// Global Admin Dashboard Analytics
+const getGlobalAnalytics = async (req, res) => {
+    try {
+        const totalBusinesses = await Business.countDocuments();
+        const totalServices = await Service.countDocuments();
+        const reviews = await Review.find();
+        const totalReviews = reviews.length;
+
+        let totalRating = 0;
+        let copiedCount = 0;
+        reviews.forEach(r => {
+            totalRating += r.rating || 0;
+            if (r.copiedToGoogle) copiedCount++;
+        });
+
+        const averageRating = totalReviews > 0 ? (totalRating / totalReviews).toFixed(1) : "0.0";
+        const conversionRate = totalReviews > 0 ? Math.round((copiedCount / totalReviews) * 100) : 0;
+
+        res.status(200).json({
+            success: true,
+            data: {
+                totalBusinesses,
+                totalServices,
+                totalReviews,
+                averageRating: Number(averageRating),
+                copiedCount,
+                conversionRate
+            }
+        });
+    } catch (error) {
+        console.error("Get Global Analytics Error:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Track Copy to Google
+const trackReviewCopy = async (req, res) => {
+    try {
+        const { reviewId } = req.params;
+        if (!reviewId) {
+            return res.status(400).json({ success: false, message: "Review ID required" });
+        }
+        await Review.findByIdAndUpdate(reviewId, { copiedToGoogle: true });
+        res.status(200).json({ success: true, message: "Copy tracked successfully" });
+    } catch (error) {
+        console.error("Track copy error:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+module.exports = {
+    generateReview,
+    getBusinessAnalytics,
+    getGlobalAnalytics,
+    trackReviewCopy
+};

@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Copy, Edit3, RefreshCw, ExternalLink, CheckCircle2 } from "lucide-react";
+import { trackReviewCopy } from "../services/publicApi";
 
-const ReviewCard = ({ review, business, onRegenerate, isGenerating }) => {
+const ReviewCard = ({ review, reviewId, business, onRegenerate, isGenerating }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editedReview, setEditedReview] = useState(review);
     const [copySuccess, setCopySuccess] = useState(false);
@@ -18,6 +19,9 @@ const ReviewCard = ({ review, business, onRegenerate, isGenerating }) => {
 
     const handleGoogleRedirect = () => {
         handleCopy(editedReview);
+        if (reviewId) {
+            trackReviewCopy(reviewId);
+        }
         if (business.googleReviewUrl) {
             setTimeout(() => {
                 window.open(business.googleReviewUrl, "_blank", "noopener,noreferrer");

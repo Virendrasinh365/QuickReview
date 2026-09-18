@@ -30,6 +30,11 @@ const reviewSchema = new mongoose.Schema(
         reviews: {
             type: [String],
             required: true
+        },
+
+        copiedToGoogle: {
+            type: Boolean,
+            default: false
         }
     },
     {

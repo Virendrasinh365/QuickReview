@@ -29,6 +29,7 @@ const CustomerReview = () => {
 
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedReview, setGeneratedReview] = useState("");
+    const [reviewId, setReviewId] = useState(null);
     const [generationError, setGenerationError] = useState("");
 
     useEffect(() => {
@@ -76,6 +77,9 @@ const CustomerReview = () => {
             
             if (result.success && result.data && result.data.review) {
                 setGeneratedReview(result.data.review);
+                if (result.data.reviewId) {
+                    setReviewId(result.data.reviewId);
+                }
             } else {
                 setGenerationError("Failed to generate review. Please try again.");
             }
@@ -163,6 +167,7 @@ const CustomerReview = () => {
                 {generatedReview && (
                     <ReviewCard 
                         review={generatedReview}
+                        reviewId={reviewId}
                         business={business}
                         onRegenerate={handleGenerate}
                         isGenerating={isGenerating}

@@ -6,23 +6,26 @@ const connectDB = require("./config/db");
 
 const businessRoutes = require("./routes/businessRoutes");
 const serviceRoutes = require("./routes/serviceRoutes");
-const { testAI } = require("./services/aiService");
 const reviewRoutes = require("./routes/reviewRoutes");
-const publicRoutes = require("./routes/publicRoutes")
-
+const publicRoutes = require("./routes/publicRoutes");
+const authRoutes = require("./routes/authRoutes");
+const { testAI } = require("./services/aiService");
+const { seedDefaultAdmin } = require("./controllers/authController");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-connectDB();
+connectDB().then(() => {
+    seedDefaultAdmin();
+});
 
+app.use("/api/auth", authRoutes);
 app.use("/api/businesses", businessRoutes);
 app.use("/api/services", serviceRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/public", publicRoutes);
-
 
 app.get("/api/test-ai", async (req, res) => {
     try {
@@ -42,12 +45,11 @@ app.get("/api/test-ai", async (req, res) => {
     }
 });
 
-
-
 app.get("/api/health", (req, res) => {
     res.json({
         success: true,
-        message: "EasyReview API is running"
+        message: "EazyReview API is running",
+        timestamp: new Date().toISOString()
     });
 });
 
