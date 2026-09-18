@@ -160,10 +160,6 @@ Open your browser at `http://localhost:5173`.
 | `/admin/business/:id` | Admin | Multi-tab business manager (Profile, Services, QR Kit, Analytics) |
 | `/review/:slug` | Customer | Public review generation page (e.g. `/review/test-mobile-store`) |
 
-**Default Admin Credentials:**
-- **Email**: `admin@quickreview.com`
-- **Password**: `admin123`
-
 ---
 
 ## 📡 API Reference
