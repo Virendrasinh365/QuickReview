@@ -1,29 +1,40 @@
 const Business = require("../models/Business");
+const Service = require("../models/Service");
+const Review = require("../models/Review");
+const { isValidId, pick } = require("../utils/ownership");
+
+const CREATE_FIELDS = ["name", "description", "category", "address", "googleReviewUrl", "logo", "languages"];
+// slug and ownerId are intentionally not updatable.
+const UPDATE_FIELDS = ["name", "description", "category", "address", "googleReviewUrl", "logo", "languages"];
+
+const fail = (res, error) =>
+    res.status(500).json({ success: false, message: error.message });
+
+const notFound = (res) =>
+    res.status(404).json({ success: false, message: "Business not found" });
 
 // Create Business
 const createBusiness = async (req, res) => {
     try {
-        const {
-            name,
-            description,
-            category,
-            address,
-            googleReviewUrl,
-            logo,
-            languages
-        } = req.body;
+        const data = pick(req.body, CREATE_FIELDS);
 
-        // Create slug from business name
-        const slug = name
+        if (!data.name || typeof data.name !== "string" || !data.name.trim()) {
+            return res.status(400).json({ success: false, message: "Business name is required" });
+        }
+
+        const slug = data.name
             .toLowerCase()
             .trim()
             .replace(/[^a-z0-9\s-]/g, "")
             .replace(/\s+/g, "-")
             .replace(/-+/g, "-");
 
-        // Check if slug already exists
-        const existingBusiness = await Business.findOne({ slug });
+        if (!slug) {
+            return res.status(400).json({ success: false, message: "Business name must contain letters or numbers" });
+        }
 
+        // Slugs are global because they form the public review URL.
+        const existingBusiness = await Business.findOne({ slug });
         if (existingBusiness) {
             return res.status(400).json({
                 success: false,
@@ -32,14 +43,9 @@ const createBusiness = async (req, res) => {
         }
 
         const business = await Business.create({
-            name,
+            ...data,
             slug,
-            description,
-            category,
-            address,
-            googleReviewUrl,
-            logo,
-            languages
+            ownerId: req.user._id
         });
 
         res.status(201).json({
@@ -47,120 +53,84 @@ const createBusiness = async (req, res) => {
             message: "Business created successfully",
             data: business
         });
-
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        fail(res, error);
     }
 };
 
-
-// Get All Businesses
+// Get All Businesses (only the caller's)
 const getBusinesses = async (req, res) => {
     try {
-        const businesses = await Business.find();
-
-        res.status(200).json({
-            success: true,
-            data: businesses
-        });
-
+        const businesses = await Business.find({ ownerId: req.user._id });
+        res.status(200).json({ success: true, data: businesses });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        fail(res, error);
     }
 };
-
 
 // Get Business By ID
 const getBusinessById = async (req, res) => {
     try {
-        const business = await Business.findById(req.params.id);
+        if (!isValidId(req.params.id)) return notFound(res);
 
-        if (!business) {
-            return res.status(404).json({
-                success: false,
-                message: "Business not found"
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            data: business
+        const business = await Business.findOne({
+            _id: req.params.id,
+            ownerId: req.user._id
         });
+        if (!business) return notFound(res);
 
+        res.status(200).json({ success: true, data: business });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        fail(res, error);
     }
 };
-
 
 // Update Business
 const updateBusiness = async (req, res) => {
     try {
-        const business = await Business.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            {
-                new: true,
-                runValidators: true
-            }
-        );
+        if (!isValidId(req.params.id)) return notFound(res);
 
-        if (!business) {
-            return res.status(404).json({
-                success: false,
-                message: "Business not found"
-            });
-        }
+        const business = await Business.findOneAndUpdate(
+            { _id: req.params.id, ownerId: req.user._id },
+            { $set: pick(req.body, UPDATE_FIELDS) },
+            { new: true, runValidators: true }
+        );
+        if (!business) return notFound(res);
 
         res.status(200).json({
             success: true,
             message: "Business updated successfully",
             data: business
         });
-
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        fail(res, error);
     }
 };
 
-
-// Delete Business
+// Delete Business (cascades to its services and reviews)
 const deleteBusiness = async (req, res) => {
     try {
-        const business = await Business.findByIdAndDelete(req.params.id);
+        if (!isValidId(req.params.id)) return notFound(res);
 
-        if (!business) {
-            return res.status(404).json({
-                success: false,
-                message: "Business not found"
-            });
-        }
+        const business = await Business.findOneAndDelete({
+            _id: req.params.id,
+            ownerId: req.user._id
+        });
+        if (!business) return notFound(res);
+
+        await Promise.all([
+            Service.deleteMany({ businessId: business._id }),
+            Review.deleteMany({ businessId: business._id })
+        ]);
 
         res.status(200).json({
             success: true,
             message: "Business deleted successfully"
         });
-
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        fail(res, error);
     }
 };
-
 
 module.exports = {
     createBusiness,

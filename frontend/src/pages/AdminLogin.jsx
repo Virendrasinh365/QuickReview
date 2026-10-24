@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Sparkles, Lock, Mail, ArrowRight, ShieldCheck } from "lucide-react";
+import { Sparkles, Lock, Mail, ArrowRight } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { loginAdmin } from "../services/adminApi";
@@ -43,11 +43,6 @@ const AdminLogin = () => {
         }
     };
 
-    const handleFillDemo = () => {
-        setEmail("admin@quickreview.com");
-        setPassword("admin123");
-    };
-
     return (
         <div className="admin-login-page animate-fade-in">
             <div className="login-card-container">
@@ -58,17 +53,6 @@ const AdminLogin = () => {
                     </div>
                     <h1>QuickReview Admin</h1>
                     <p>Sign in to manage businesses, review campaigns & AI analytics</p>
-                </div>
-
-                {/* Demo Credentials Helper Pill */}
-                <div className="demo-credentials-pill" onClick={handleFillDemo} role="button" tabIndex={0}>
-                    <div className="demo-icon">
-                        <ShieldCheck size={16} />
-                    </div>
-                    <div className="demo-text">
-                        <span>Click to autofill default credentials:</span>
-                        <code>admin@quickreview.com</code> / <code>admin123</code>
-                    </div>
                 </div>
 
                 {/* Form */}

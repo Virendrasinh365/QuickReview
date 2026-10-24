@@ -74,7 +74,7 @@ graph LR
 - **One-Click Handoff**: Copies text to clipboard and opens the exact Google Review link with zero friction.
 
 ### 2. 🛡️ Enterprise Admin Management Portal (`/admin`)
-- **Secure Access**: JWT protected admin routes with auto-token refresh and interceptors.
+- **Secure Access**: JWT protected admin routes, per-admin data isolation, rate-limited login and review generation, Helmet headers and CORS allow-list.
 - **KPI Metrics Overview**: Global and per-business stats (Total Generations, Avg Rating, Google Conversion Rate).
 - **Business Management**: Configure business profile, address, categories, and direct Google Review URLs.
 - **Service/Experience Catalog**: Add, search, and toggle active/inactive status for services with optimistic updates.
@@ -112,8 +112,20 @@ Create a `.env` file in `backend/` (or copy `.env.example`):
 MONGO_URI=your_mongodb_connection_string
 PORT=5000
 GROQ_API_KEY=your_groq_api_key
-JWT_SECRET=your_super_secret_jwt_key
+JWT_SECRET=a_long_random_secret_at_least_16_chars   # required, server won't start without it
+FRONTEND_URL=http://localhost:5173                    # allowed CORS origin(s), comma-separated
+
+# First admin (created only when no users exist; remove after first start)
+ADMIN_EMAIL=you@example.com
+ADMIN_PASSWORD=use_a_strong_password
+
+# Optional: invite code to register more admins. Leave empty to disable registration.
+REGISTRATION_CODE=
 ```
+
+> There is no built-in default account. Create the first admin with `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
+> Each admin only sees and manages the businesses they created. Businesses that existed before
+> ownership was added are automatically assigned to the oldest admin on the first start.
 
 Start the backend server:
 
@@ -151,11 +163,11 @@ Open your browser at `http://localhost:5173`.
 
 ---
 
-## 🔑 Default Credentials & Routes
+## 🔑 Routes
 
 | Route | Role | Purpose |
 | :--- | :--- | :--- |
-| `/admin/login` | Public | Admin login page with 1-click demo autofill |
+| `/admin/login` | Public | Admin login page |
 | `/admin` | Admin | Dashboard with global analytics and client business cards |
 | `/admin/business/:id` | Admin | Multi-tab business manager (Profile, Services, QR Kit, Analytics) |
 | `/review/:slug` | Customer | Public review generation page (e.g. `/review/test-mobile-store`) |
@@ -172,7 +184,7 @@ Open your browser at `http://localhost:5173`.
 
 ### Authentication APIs
 - `POST /api/auth/login` — Login admin and receive JWT token.
-- `POST /api/auth/register` — Register a new admin.
+- `POST /api/auth/register` — Register a new admin (requires `inviteCode` matching `REGISTRATION_CODE`; disabled if unset).
 - `GET /api/auth/me` — Fetch currently authenticated user profile.
 
 ### Protected Admin APIs (Requires `Authorization: Bearer <token>`)
@@ -202,7 +214,7 @@ Open your browser at `http://localhost:5173`.
 1. Set the root directory to `backend`.
 2. Build command: `npm install`.
 3. Start command: `npm start`.
-4. Add environment variables: `MONGO_URI`, `GROQ_API_KEY`, `JWT_SECRET`, `PORT=5000`.
+4. Add environment variables: `MONGO_URI`, `GROQ_API_KEY`, `JWT_SECRET`, `FRONTEND_URL` (your deployed frontend URL), `PORT=5000`, plus `ADMIN_EMAIL` / `ADMIN_PASSWORD` for the first start.
 
 ---
 

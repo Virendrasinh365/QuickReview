@@ -1,6 +1,10 @@
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
 require("dotenv").config();
+
+const { validateEnv } = require("./config/env");
+validateEnv();
 
 const connectDB = require("./config/db");
 
@@ -9,16 +13,37 @@ const serviceRoutes = require("./routes/serviceRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const publicRoutes = require("./routes/publicRoutes");
 const authRoutes = require("./routes/authRoutes");
-const { testAI } = require("./services/aiService");
-const { seedDefaultAdmin } = require("./controllers/authController");
+const { seedAdminFromEnv, assignOrphanBusinesses } = require("./controllers/authController");
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
+// Needed so rate limiting sees the real client IP behind Render/Railway/Vercel proxies.
+app.set("trust proxy", 1);
 
-connectDB().then(() => {
-    seedDefaultAdmin();
+app.use(helmet());
+
+// Only the configured frontend origin(s) may call the API from a browser.
+// FRONTEND_URL can be a comma-separated list; localhost dev is allowed when unset.
+const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:5173")
+    .split(",")
+    .map((o) => o.trim().replace(/\/$/, ""))
+    .filter(Boolean);
+
+app.use(
+    cors({
+        origin: (origin, callback) => {
+            // Allow non-browser clients (no Origin header) such as curl or health checks.
+            if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+            return callback(new Error("Not allowed by CORS"));
+        }
+    })
+);
+
+app.use(express.json({ limit: "100kb" }));
+
+connectDB().then(async () => {
+    await seedAdminFromEnv();
+    await assignOrphanBusinesses();
 });
 
 app.use("/api/auth", authRoutes);
@@ -26,24 +51,6 @@ app.use("/api/businesses", businessRoutes);
 app.use("/api/services", serviceRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/public", publicRoutes);
-
-app.get("/api/test-ai", async (req, res) => {
-    try {
-        const result = await testAI();
-
-        res.status(200).json({
-            success: true,
-            message: result
-        });
-    } catch (error) {
-        console.error("AI Error:", error);
-
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
-    }
-});
 
 app.get("/api/health", (req, res) => {
     res.json({

@@ -1,32 +1,51 @@
+const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-const { JWT_SECRET } = require("../middleware/authMiddleware");
 
 const generateToken = (id) => {
-    return jwt.sign({ id }, JWT_SECRET, { expiresIn: "30d" });
+    return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "30d" });
 };
 
-// Seed default admin if none exists
-const seedDefaultAdmin = async () => {
+// Create the first admin from environment variables, only when no users exist.
+// There is no built-in default account.
+const seedAdminFromEnv = async () => {
     try {
+        const { ADMIN_EMAIL, ADMIN_PASSWORD } = process.env;
+        if (!ADMIN_EMAIL || !ADMIN_PASSWORD) return;
+
         const count = await User.countDocuments();
         if (count === 0) {
             await User.create({
-                name: "Admin User",
-                email: "admin@quickreview.com",
-                password: "admin123",
+                name: "Admin",
+                email: ADMIN_EMAIL.toLowerCase().trim(),
+                password: ADMIN_PASSWORD,
                 role: "admin"
             });
-            console.log("Default admin created: admin@quickreview.com / admin123");
-        } else {
-            // Automatically migrate prior default admin email if exists
-            await User.updateOne(
-                { email: "admin@eazyreview.com" },
-                { email: "admin@quickreview.com" }
-            );
+            console.log(`Initial admin created: ${ADMIN_EMAIL}`);
         }
     } catch (err) {
-        console.error("Error seeding default admin:", err.message);
+        console.error("Error seeding initial admin:", err.message);
+    }
+};
+
+// One-time migration: businesses created before ownership existed are assigned
+// to the oldest admin so they stay visible.
+const assignOrphanBusinesses = async () => {
+    try {
+        const Business = require("../models/Business");
+        const orphans = await Business.countDocuments({ ownerId: { $exists: false } });
+        if (orphans === 0) return;
+
+        const firstAdmin = await User.findOne({ role: "admin" }).sort({ createdAt: 1 });
+        if (!firstAdmin) return;
+
+        await Business.updateMany(
+            { ownerId: { $exists: false } },
+            { $set: { ownerId: firstAdmin._id } }
+        );
+        console.log(`Assigned ${orphans} existing business(es) to ${firstAdmin.email}`);
+    } catch (err) {
+        console.error("Error migrating businesses:", err.message);
     }
 };
 
@@ -43,16 +62,7 @@ const login = async (req, res) => {
         }
 
         const normalizedEmail = email.toLowerCase().trim();
-        let user = await User.findOne({ email: normalizedEmail });
-        
-        // Backward compatibility: allow login with admin@quickreview.com if DB still has admin@eazyreview.com
-        if (!user && normalizedEmail === "admin@quickreview.com") {
-            user = await User.findOne({ email: "admin@eazyreview.com" });
-            if (user) {
-                user.email = "admin@quickreview.com";
-                await user.save();
-            }
-        }
+        const user = await User.findOne({ email: normalizedEmail });
         if (!user || !(await user.comparePassword(password))) {
             return res.status(401).json({
                 success: false,
@@ -85,7 +95,33 @@ const login = async (req, res) => {
 // Register
 const register = async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        // Registration is invite-only: it needs the REGISTRATION_CODE secret,
+        // and is disabled entirely when that variable is not set.
+        const inviteCode = process.env.REGISTRATION_CODE;
+        if (!inviteCode) {
+            return res.status(403).json({
+                success: false,
+                message: "Registration is disabled"
+            });
+        }
+
+        const { name, email, password, inviteCode: providedCode } = req.body;
+
+        const a = Buffer.from(String(providedCode || ""));
+        const b = Buffer.from(inviteCode);
+        if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+            return res.status(403).json({
+                success: false,
+                message: "Invalid invite code"
+            });
+        }
+
+        if (typeof password !== "string" || password.length < 8) {
+            return res.status(400).json({
+                success: false,
+                message: "Password must be at least 8 characters"
+            });
+        }
 
         if (!name || !email || !password) {
             return res.status(400).json({
@@ -150,5 +186,6 @@ module.exports = {
     login,
     register,
     getMe,
-    seedDefaultAdmin
+    seedAdminFromEnv,
+    assignOrphanBusinesses
 };
