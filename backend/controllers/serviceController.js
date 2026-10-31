@@ -1,9 +1,41 @@
 const Service = require("../models/Service");
+const {
+    isValidId,
+    getOwnedBusiness,
+    getOwnedBusinessIds,
+    pick
+} = require("../utils/ownership");
+
+const CREATE_FIELDS = ["businessId", "name", "description", "isActive"];
+// businessId is intentionally not updatable (can't move a service to another business).
+const UPDATE_FIELDS = ["name", "description", "isActive"];
+
+const fail = (res, error) =>
+    res.status(500).json({ success: false, message: error.message });
+
+const notFound = (res) =>
+    res.status(404).json({ success: false, message: "Service not found" });
+
+// Load a service only if its business belongs to the caller.
+const getOwnedService = async (serviceId, userId) => {
+    if (!isValidId(serviceId)) return null;
+    const service = await Service.findById(serviceId);
+    if (!service) return null;
+    const business = await getOwnedBusiness(service.businessId, userId);
+    return business ? service : null;
+};
 
 // Create Service
 const createService = async (req, res) => {
     try {
-        const service = await Service.create(req.body);
+        const data = pick(req.body, CREATE_FIELDS);
+
+        const business = await getOwnedBusiness(data.businessId, req.user._id);
+        if (!business) {
+            return res.status(404).json({ success: false, message: "Business not found" });
+        }
+
+        const service = await Service.create(data);
 
         res.status(201).json({
             success: true,
@@ -11,95 +43,58 @@ const createService = async (req, res) => {
             data: service
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        fail(res, error);
     }
 };
 
-
-// Get All Services
+// Get All Services (only for the caller's businesses)
 const getServices = async (req, res) => {
     try {
-        const services = await Service.find();
-
-        res.status(200).json({
-            success: true,
-            data: services
-        });
+        const businessIds = await getOwnedBusinessIds(req.user._id);
+        const services = await Service.find({ businessId: { $in: businessIds } });
+        res.status(200).json({ success: true, data: services });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        fail(res, error);
     }
 };
-
 
 // Get Services By Business
 const getServicesByBusiness = async (req, res) => {
     try {
-        const services = await Service.find({
-            businessId: req.params.businessId
-        });
+        const business = await getOwnedBusiness(req.params.businessId, req.user._id);
+        if (!business) {
+            return res.status(404).json({ success: false, message: "Business not found" });
+        }
 
-        res.status(200).json({
-            success: true,
-            data: services
-        });
+        const services = await Service.find({ businessId: business._id });
+        res.status(200).json({ success: true, data: services });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        fail(res, error);
     }
 };
-
 
 // Get Service By ID
 const getServiceById = async (req, res) => {
     try {
-        const service = await Service.findById(req.params.id);
-
-        if (!service) {
-            return res.status(404).json({
-                success: false,
-                message: "Service not found"
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            data: service
-        });
+        const service = await getOwnedService(req.params.id, req.user._id);
+        if (!service) return notFound(res);
+        res.status(200).json({ success: true, data: service });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        fail(res, error);
     }
 };
-
 
 // Update Service
 const updateService = async (req, res) => {
     try {
-        const service = await Service.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            {
-                new: true,
-                runValidators: true
-            }
-        );
+        const existing = await getOwnedService(req.params.id, req.user._id);
+        if (!existing) return notFound(res);
 
-        if (!service) {
-            return res.status(404).json({
-                success: false,
-                message: "Service not found"
-            });
-        }
+        const service = await Service.findByIdAndUpdate(
+            existing._id,
+            { $set: pick(req.body, UPDATE_FIELDS) },
+            { new: true, runValidators: true }
+        );
 
         res.status(200).json({
             success: true,
@@ -107,38 +102,26 @@ const updateService = async (req, res) => {
             data: service
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        fail(res, error);
     }
 };
-
 
 // Delete Service
 const deleteService = async (req, res) => {
     try {
-        const service = await Service.findByIdAndDelete(req.params.id);
+        const existing = await getOwnedService(req.params.id, req.user._id);
+        if (!existing) return notFound(res);
 
-        if (!service) {
-            return res.status(404).json({
-                success: false,
-                message: "Service not found"
-            });
-        }
+        await Service.findByIdAndDelete(existing._id);
 
         res.status(200).json({
             success: true,
             message: "Service deleted successfully"
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        fail(res, error);
     }
 };
-
 
 module.exports = {
     createService,

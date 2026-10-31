@@ -5,7 +5,8 @@ const reviewSchema = new mongoose.Schema(
         businessId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Business",
-            required: true
+            required: true,
+            index: true
         },
 
         rating: {

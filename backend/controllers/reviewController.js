@@ -3,6 +3,7 @@ const Service = require("../models/Service");
 const Review = require("../models/Review");
 
 const { generateReviews } = require("../services/aiService");
+const { isValidId, getOwnedBusiness, getOwnedBusinessIds } = require("../utils/ownership");
 
 const generateReview = async (req, res) => {
     try {
@@ -27,10 +28,22 @@ const generateReview = async (req, res) => {
             });
         }
         
-        if (rating < 1 || rating > 5) {
+        if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
             return res.status(400).json({
                 success: false,
-                message: "Rating must be between 1 and 5"
+                message: "Rating must be a whole number between 1 and 5"
+            });
+        }
+
+        if (
+            typeof slug !== "string" ||
+            typeof language !== "string" ||
+            !serviceIds.every((id) => isValidId(id)) ||
+            serviceIds.length > 20
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid slug, language or serviceIds"
             });
         }
 
@@ -120,7 +133,11 @@ const generateReview = async (req, res) => {
 // Analytics for single business
 const getBusinessAnalytics = async (req, res) => {
     try {
-        const { businessId } = req.params;
+        const business = await getOwnedBusiness(req.params.businessId, req.user._id);
+        if (!business) {
+            return res.status(404).json({ success: false, message: "Business not found" });
+        }
+        const businessId = business._id;
         const reviews = await Review.find({ businessId })
             .populate("serviceIds", "name")
             .sort({ createdAt: -1 });
@@ -164,22 +181,28 @@ const getBusinessAnalytics = async (req, res) => {
     }
 };
 
-// Global Admin Dashboard Analytics
+// Global Admin Dashboard Analytics (scoped to the caller's businesses)
 const getGlobalAnalytics = async (req, res) => {
     try {
-        const totalBusinesses = await Business.countDocuments();
-        const totalServices = await Service.countDocuments();
-        const reviews = await Review.find();
-        const totalReviews = reviews.length;
+        const businessIds = await getOwnedBusinessIds(req.user._id);
+        const totalBusinesses = businessIds.length;
+        const totalServices = await Service.countDocuments({ businessId: { $in: businessIds } });
 
-        let totalRating = 0;
-        let copiedCount = 0;
-        reviews.forEach(r => {
-            totalRating += r.rating || 0;
-            if (r.copiedToGoogle) copiedCount++;
-        });
+        const [stats] = await Review.aggregate([
+            { $match: { businessId: { $in: businessIds } } },
+            {
+                $group: {
+                    _id: null,
+                    totalReviews: { $sum: 1 },
+                    totalRating: { $sum: "$rating" },
+                    copiedCount: { $sum: { $cond: ["$copiedToGoogle", 1, 0] } }
+                }
+            }
+        ]);
 
-        const averageRating = totalReviews > 0 ? (totalRating / totalReviews).toFixed(1) : "0.0";
+        const totalReviews = stats?.totalReviews || 0;
+        const copiedCount = stats?.copiedCount || 0;
+        const averageRating = totalReviews > 0 ? (stats.totalRating / totalReviews).toFixed(1) : "0.0";
         const conversionRate = totalReviews > 0 ? Math.round((copiedCount / totalReviews) * 100) : 0;
 
         res.status(200).json({
@@ -203,8 +226,8 @@ const getGlobalAnalytics = async (req, res) => {
 const trackReviewCopy = async (req, res) => {
     try {
         const { reviewId } = req.params;
-        if (!reviewId) {
-            return res.status(400).json({ success: false, message: "Review ID required" });
+        if (!reviewId || !isValidId(reviewId)) {
+            return res.status(400).json({ success: false, message: "Valid review ID required" });
         }
         await Review.findByIdAndUpdate(reviewId, { copiedToGoogle: true });
         res.status(200).json({ success: true, message: "Copy tracked successfully" });
@@ -219,4 +242,4 @@ module.exports = {
     getBusinessAnalytics,
     getGlobalAnalytics,
     trackReviewCopy
-};
+};
